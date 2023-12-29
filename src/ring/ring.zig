@@ -27,7 +27,6 @@ pub fn RingBufferOf(comptime T: type) type {
                 return RBError.BufferFull;
             }
 
-            std.debug.print(" write at {d}  item {}", .{ self.writeIdx, item });
             self.storage[self.writeIdx] = item;
 
             self.*.writeIdx = self.*.advance(self.*.writeIdx);
