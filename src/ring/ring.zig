@@ -8,6 +8,7 @@ pub fn RingBufferOf(comptime T: type) type {
         writeIdx: usize,
         readIdx: usize,
         full: bool,
+        allocator: Allocator,
 
         pub fn init(cap: usize, allocator: Allocator) !RingBufferOf(T) {
             if (cap <= 0) {
@@ -19,7 +20,12 @@ pub fn RingBufferOf(comptime T: type) type {
                 .readIdx = 0,
                 .full = false,
                 .storage = s,
+                .allocator = allocator,
             };
+        }
+
+        pub fn deinit(self: RingBufferOf(T)) !void {
+            self.allocator.free(self.storage);
         }
 
         pub fn offer(self: *RingBufferOf(T), item: T) !void {
@@ -64,15 +70,18 @@ pub fn RingBufferOf(comptime T: type) type {
 }
 
 test "can create a buffer of any type" {
-    const allocator = std.heap.page_allocator;
-    _ = try RingBufferOf(i32).init(3, allocator);
+    const allocator = std.testing.allocator;
+    const rb = try RingBufferOf(i32).init(3, allocator);
+
     _ = RingBufferOf(i8).init(0, allocator) catch |err| {
         try std.testing.expect(err == RBError.ErrShouldBePositive);
     };
+    try rb.deinit();
 }
 
 test "can offer and poll from the ring" {
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
+
     var buf = try RingBufferOf(i32).init(3, allocator);
     const rb = &buf;
 
@@ -98,4 +107,6 @@ test "can offer and poll from the ring" {
 
     const val2 = try rb.poll();
     try std.testing.expect(val2 == 11);
+
+    try rb.deinit();
 }
